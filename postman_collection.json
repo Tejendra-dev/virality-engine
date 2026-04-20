@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "Virality Engine API",
+    "description": "Postman collection for Grid07 Intern Assignment — Virality Engine",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Phase 1 - Core API",
+      "item": [
+        {
+          "name": "Create Post (User)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 1,\n  \"authorType\": \"USER\",\n  \"content\": \"This is my first post!\"\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/posts", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts"] }
+          }
+        },
+        {
+          "name": "Create Post (Bot)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 1,\n  \"authorType\": \"BOT\",\n  \"content\": \"I am a bot posting content.\"\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/posts", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts"] }
+          }
+        },
+        {
+          "name": "Add Human Comment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 1,\n  \"authorType\": \"USER\",\n  \"content\": \"Great post!\",\n  \"depthLevel\": 1,\n  \"humanUserId\": null\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/posts/1/comments", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts", "1", "comments"] }
+          }
+        },
+        {
+          "name": "Like a Post",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "http://localhost:8080/api/posts/1/like?userId=1", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts", "1", "like"], "query": [{ "key": "userId", "value": "1" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 2 - Guardrails",
+      "item": [
+        {
+          "name": "Bot Comment — Normal (should pass)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 10,\n  \"authorType\": \"BOT\",\n  \"content\": \"Bot reply here\",\n  \"depthLevel\": 1,\n  \"humanUserId\": 1\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/posts/1/comments", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts", "1", "comments"] }
+          }
+        },
+        {
+          "name": "Bot Comment — Cooldown Test (send twice fast, 2nd should get 429)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 10,\n  \"authorType\": \"BOT\",\n  \"content\": \"Bot reply again within 10 min\",\n  \"depthLevel\": 1,\n  \"humanUserId\": 1\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/posts/1/comments", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts", "1", "comments"] }
+          }
+        },
+        {
+          "name": "Bot Comment — Vertical Cap Exceeded (depth > 20)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 10,\n  \"authorType\": \"BOT\",\n  \"content\": \"Too deep!\",\n  \"depthLevel\": 21,\n  \"humanUserId\": 2\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/posts/1/comments", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "posts", "1", "comments"] }
+          }
+        }
+      ]
+    }
+  ]
+}
