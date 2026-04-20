@@ -10,7 +10,7 @@
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Tejendra--Ayyappa--Reddy-blue?style=flat&logo=linkedin)](https://linkedin.com/in/tejendra-ayyappa-reddy)
 [![GitHub](https://img.shields.io/badge/GitHub-Tejendra--dev-black?style=flat&logo=github)](https://github.com/Tejendra-dev)
-[![Live Project](https://img.shields.io/badge/Live%20Project-JobPulse%20AI-green?style=flat&logo=rocket)](https://github.com/Tejendra-dev)
+[![Live Project](https://img.shields.io/badge/Live%20Project-JobPulse%20AI-green?style=flat&logo=rocket)]([https://github.com/Tejendra-dev](https://jobpulse-frontend.vercel.app/login))
 
 ---
 
@@ -70,6 +70,25 @@ This microservice acts as a **central API gateway and guardrail system** for a s
 | Docker Compose | Local infrastructure setup |
 
 ---
+
+### ❗ Why not use Java (HashMap / synchronized)?
+
+A naive approach using in-memory counters (e.g., HashMap or synchronized blocks) fails in distributed environments:
+
+- Each application instance would maintain its own state → inconsistent counts
+- Race conditions still occur under high concurrency
+- Not scalable across multiple instances
+
+Redis solves this by acting as a centralized, atomic state manager shared across all instances.
+
+### ⚠️ Handling Overflow Safely
+
+If the incremented value exceeds the allowed limit, the system immediately rolls back using DECR.
+
+This ensures:
+- No incorrect state persists
+- The counter remains accurate
+- Future requests are evaluated correctly
 
 ## 📡 API Endpoints
 
@@ -241,3 +260,10 @@ src/main/java/com/grid07/virality/
 │   └── CreateCommentRequest.java
 └── ViralityEngineApplication.java
 ```
+
+## 🧠 Key Engineering Decisions
+
+- Used Redis over in-memory storage for distributed consistency
+- Leveraged atomic INCR to eliminate race conditions
+- Designed system to be stateless for horizontal scalability
+- Implemented rollback (DECR) to maintain strict guardrail limits
