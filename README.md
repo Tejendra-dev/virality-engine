@@ -10,8 +10,7 @@
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Tejendra--Ayyappa--Reddy-blue?style=flat&logo=linkedin)](https://linkedin.com/in/tejendra-ayyappa-reddy)
 [![GitHub](https://img.shields.io/badge/GitHub-Tejendra--dev-black?style=flat&logo=github)](https://github.com/Tejendra-dev)
-[![Live Project](https://img.shields.io/badge/Live%20Project-JobPulse%20AI-green?style=flat&logo=rocket)]([https://github.com/Tejendra-dev](https://jobpulse-frontend.vercel.app/login))
-
+[![Live Project](https://img.shields.io/badge/Live%20Project-JobPulse%20AI-green?style=flat&logo=rocket)](https://jobpulse-frontend.vercel.app/login)
 ---
 
 ## 🧠 What This Project Does
