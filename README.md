@@ -29,20 +29,20 @@ This microservice acts as a **central API gateway and guardrail system** for a s
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    CLIENT (Postman / Frontend)           │
+│                    CLIENT (Postman / Frontend)          │
 └─────────────────────┬───────────────────────────────────┘
                       │ HTTP Requests
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│                 Spring Boot (Port 8080)                  │
+│                 Spring Boot (Port 8080)                 │
 │                                                         │
 │   PostController  ──►  PostService  ──►  RedisService   │
-│        │                    │                  │        │
-│        │              Guardrails:              │        │
-│        │           ✅ Horizontal Cap           │        │
-│        │           ✅ Vertical Cap             │        │
-│        │           ✅ Cooldown Cap             │        │
-│        │                    │                  │        │
+│        │                    │                 │         │
+│        │              Guardrails:             │         │
+│        │           ✅ Horizontal Cap          │        │
+│        │           ✅ Vertical Cap            │        │
+│        │           ✅ Cooldown Cap            │        │
+│        │                    │                 │         │
 │        │                    ▼                  ▼        │
 │        │            CommentRepository      Redis        │
 │        │                    │           (Gatekeeper)    │
