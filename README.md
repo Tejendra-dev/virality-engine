@@ -1,51 +1,85 @@
-# Virality Engine — Spring Boot Microservice
+# 🚀 Virality Engine — Spring Boot Microservice
 
-A high-performance Spring Boot microservice implementing a Redis-backed virality scoring system with atomic guardrails and smart notification batching.
-
----
-
-## Tech Stack
-
-- Java 17
-- Spring Boot 3.4.x
-- PostgreSQL (source of truth for content)
-- Redis (gatekeeper for all guardrails and counters)
-- Lombok
+> A high-performance, Redis-backed API gateway with atomic guardrails, real-time virality scoring, and smart notification batching — built as part of the Grid07 Backend Engineering Internship Assignment.
 
 ---
 
-## How to Run
+## 👨‍💻 Built By
 
-### Option 1: Docker (recommended)
-```bash
-docker-compose up -d
-mvn spring-boot:run
-```
+**Tejendra Ayyappa Reddy Syamala**
 
-### Option 2: Local PostgreSQL + Redis
-1. Make sure PostgreSQL is running on port 5432
-2. Make sure Redis is running on port 6379
-3. Create the database:
-```sql
-CREATE DATABASE virality_engine;
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Tejendra--Ayyappa--Reddy-blue?style=flat&logo=linkedin)](https://linkedin.com/in/tejendra-ayyappa-reddy)
+[![GitHub](https://img.shields.io/badge/GitHub-Tejendra--dev-black?style=flat&logo=github)](https://github.com/Tejendra-dev)
+[![Live Project](https://img.shields.io/badge/Live%20Project-JobPulse%20AI-green?style=flat&logo=rocket)](https://github.com/Tejendra-dev)
+
+---
+
+## 🧠 What This Project Does
+
+This microservice acts as a **central API gateway and guardrail system** for a social platform where both humans and AI bots can create posts and comments. The system:
+
+- Tracks **real-time virality scores** for every post using Redis
+- Enforces **3 atomic guardrails** to prevent AI compute runaway
+- Batches **smart notifications** to prevent spam
+- Handles **200 concurrent requests** without race conditions
+
+---
+
+## 🏗️ Architecture Overview
+
 ```
-4. Update `src/main/resources/application.properties` with your PostgreSQL password
-5. Run:
-```bash
-mvn spring-boot:run
+┌─────────────────────────────────────────────────────────┐
+│                    CLIENT (Postman / Frontend)           │
+└─────────────────────┬───────────────────────────────────┘
+                      │ HTTP Requests
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│                 Spring Boot (Port 8080)                  │
+│                                                         │
+│   PostController  ──►  PostService  ──►  RedisService   │
+│        │                    │                  │        │
+│        │              Guardrails:              │        │
+│        │           ✅ Horizontal Cap           │        │
+│        │           ✅ Vertical Cap             │        │
+│        │           ✅ Cooldown Cap             │        │
+│        │                    │                  │        │
+│        │                    ▼                  ▼        │
+│        │            CommentRepository      Redis        │
+│        │                    │           (Gatekeeper)    │
+│        ▼                    ▼                           │
+│   PostRepository      PostgreSQL                        │
+│                      (Source of Truth)                  │
+│                                                         │
+│   NotificationSweeper (CRON every 5 min)                │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## API Endpoints
+## ⚙️ Tech Stack
+
+| Technology | Purpose |
+|---|---|
+| Java 17 | Core language |
+| Spring Boot 3.4.x | Application framework |
+| Spring Data JPA + Hibernate | ORM / Database layer |
+| PostgreSQL | Persistent storage (source of truth) |
+| Redis (Spring Data Redis) | Atomic counters, TTL keys, notification queues |
+| Lombok | Boilerplate reduction |
+| Maven | Build tool |
+| Docker Compose | Local infrastructure setup |
+
+---
+
+## 📡 API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/posts` | Create a new post |
-| POST | `/api/posts/{postId}/comments` | Add a comment (with guardrails for bots) |
-| POST | `/api/posts/{postId}/like?userId={id}` | Like a post |
+| `POST` | `/api/posts` | Create a new post (User or Bot) |
+| `POST` | `/api/posts/{postId}/comments` | Add a comment with guardrail checks |
+| `POST` | `/api/posts/{postId}/like?userId={id}` | Like a post (updates virality score) |
 
-### Example Requests
+### Request Examples
 
 **Create a Post:**
 ```json
@@ -57,7 +91,7 @@ POST /api/posts
 }
 ```
 
-**Add a Bot Comment:**
+**Add a Bot Comment (with guardrails):**
 ```json
 POST /api/posts/1/comments
 {
@@ -76,39 +110,66 @@ POST /api/posts/1/like?userId=1
 
 ---
 
-## How Thread Safety is Guaranteed for Atomic Locks (Phase 2)
+## 🛡️ Phase 2: Redis Guardrails — How Thread Safety Works
 
 ### The Problem
-When 200 concurrent bot requests hit the API simultaneously, a naive implementation using Java variables or database reads would cause race conditions — two requests could both read `count = 99`, both think they're under the limit, and both write to the DB, resulting in 101 comments instead of 100.
+When 200 concurrent bot requests hit simultaneously, a naive implementation would cause race conditions. Two threads could both read `count = 99`, both pass the check, and both write — resulting in 101 comments instead of 100.
 
-### The Solution: Redis INCR
+### The Solution: Redis Atomic INCR
 
-The horizontal cap uses Redis's `INCR` command via Spring Data Redis:
+```
+Thread 1 ──► INCR post:1:bot_count ──► returns 99  ✅ allowed
+Thread 2 ──► INCR post:1:bot_count ──► returns 100 ✅ allowed
+Thread 3 ──► INCR post:1:bot_count ──► returns 101 ❌ rejected + DECR back to 100
+```
+
+Redis is **single-threaded internally**. The `INCR` command reads, increments, and returns the new value in one **atomic, indivisible operation**. No two threads can interleave during this step — making it perfectly race-condition safe.
 
 ```java
 public Long incrementAndGetBotCount(Long postId) {
     String key = "post:" + postId + ":bot_count";
-    return redisTemplate.opsForValue().increment(key);
+    return redisTemplate.opsForValue().increment(key); // ATOMIC
 }
 ```
 
-**Why this is atomic:** Redis is single-threaded internally. The `INCR` command is an atomic operation — it reads, increments, and returns the new value in a single indivisible step. No two requests can interleave during this operation. This means:
+### All 3 Guardrails
 
-- Request 1 calls INCR → gets 99 ✅ (allowed)
-- Request 2 calls INCR → gets 100 ✅ (allowed)  
-- Request 3 calls INCR → gets 101 ❌ (rejected + decremented back to 100)
-
-The counter is rolled back with `DECR` if the request is rejected, keeping the count accurate.
+| Guardrail | Redis Key | Limit | Response |
+|---|---|---|---|
+| Horizontal Cap | `post:{id}:bot_count` | 100 bot replies/post | 429 |
+| Vertical Cap | checked in-memory | depth > 20 | 429 |
+| Cooldown Cap | `cooldown:bot_{id}:human_{id}` | once per 10 min | 429 |
 
 ### Statelessness
-All state lives in Redis — no Java `HashMap`, no `static` variables, no in-memory counters. This means the Spring Boot app can be scaled horizontally (multiple instances) and the guardrails still work correctly across all instances.
-
-### Database Safety
-`@Transactional` ensures that the PostgreSQL write only happens after all Redis guardrails pass. If the DB write fails, the transaction rolls back — but the Redis counter has already been incremented. This is an acceptable trade-off since Redis is the gatekeeper, not the source of truth.
+All state lives in Redis — **no Java HashMap, no static variables**. The app can be scaled to multiple instances and guardrails still work correctly across all of them.
 
 ---
 
-## Redis Key Reference
+## 🔔 Phase 3: Smart Notification Batching
+
+```
+Bot interacts with User's post
+          │
+          ▼
+Has user received notification in last 15 min?
+     │                    │
+    YES                   NO
+     │                    │
+     ▼                    ▼
+Push to Redis List    Send immediately +
+user:{id}:pending     set 15-min cooldown
+_notifs
+
+Every 5 minutes — CRON Sweeper runs:
+  → Scans all pending notification lists
+  → Pops all messages
+  → Logs: "Bot X and N others interacted with your posts"
+  → Clears the list
+```
+
+---
+
+## 🗝️ Redis Key Reference
 
 | Key | Purpose | TTL |
 |-----|---------|-----|
@@ -116,4 +177,67 @@ All state lives in Redis — no Java `HashMap`, no `static` variables, no in-mem
 | `post:{id}:bot_count` | Bot reply count per post | None |
 | `cooldown:bot_{id}:human_{id}` | Per-bot-per-human cooldown | 10 minutes |
 | `notif_cooldown:{userId}` | Notification throttle per user | 15 minutes |
-| `user:{id}:pending_notifs` | Queued notifications list | None (cleared by sweeper) |
+| `user:{id}:pending_notifs` | Queued notifications list | Cleared by sweeper |
+
+---
+
+## 🐳 Running with Docker
+
+```bash
+# Start PostgreSQL + Redis
+docker-compose up -d
+
+# Run the app
+mvn spring-boot:run
+```
+
+## 💻 Running Locally (without Docker)
+
+1. Make sure PostgreSQL is running on port `5432`
+2. Make sure Redis is running on port `6379`
+3. Create the database:
+```sql
+CREATE DATABASE virality_engine;
+```
+4. Update `src/main/resources/application.properties` with your PostgreSQL password
+5. Run:
+```bash
+mvn spring-boot:run
+```
+
+---
+
+## 📬 Testing with Postman
+
+Import `postman_collection.json` into Postman. The collection includes:
+- Phase 1: Create post, add comment, like post
+- Phase 2: Bot guardrail tests (cooldown, vertical cap)
+
+---
+
+## 📁 Project Structure
+
+```
+src/main/java/com/grid07/virality/
+├── controller/
+│   └── PostController.java       # REST endpoints
+├── service/
+│   ├── PostService.java          # Business logic + guardrails
+│   ├── RedisService.java         # All Redis operations
+│   ├── NotificationSweeper.java  # CRON job
+│   └── TooManyRequestsException.java
+├── entity/
+│   ├── User.java
+│   ├── Bot.java
+│   ├── Post.java
+│   └── Comment.java
+├── repository/
+│   ├── UserRepository.java
+│   ├── BotRepository.java
+│   ├── PostRepository.java
+│   └── CommentRepository.java
+├── dto/
+│   ├── CreatePostRequest.java
+│   └── CreateCommentRequest.java
+└── ViralityEngineApplication.java
+```
